@@ -13,55 +13,56 @@ def get_arguments():
 
     return parser.parse_args()
 
-# Eliminar esta funcion?????
-def count_lines():
-    count=0
-    with open(wordlist, errors="ignore") as file:
-        lines = file.readlines()
-        for line in lines:
-            lines_number += 1
-        return lines_number
-
 def parse_wordlist(wordlist):
-    lines_number = count_lines()
-	    block = 1000
-	    with open(wordlist, block) as file:
-		    lines = []
-            for line in file:
-                lines.append(line)
-                if len(lines) == block:
-                   yield lines
-                   lines = []
-                if lines:
-                    yield lines
+    block = 1000
+    with open(wordlist, mode="r", encoding="utf-8") as file:
+        lines = []
+        for line in file:
+            lines.append(line)
+            if len(lines) == block:
+                yield lines
+                lines = []
+        if lines:
+            yield lines
                 
-def hash_chek(lines, algorithm, hash_value):
+def hash_check(lines, algorithm, hash_value, queue):
     for line in lines:
-        h = hashlib.new(hash_value)
+        h = hashlib.new(algorithm)
         h.update(line.strip().encode("utf8"))
         if h.hexdigest() == hash_value.lower():
-            return line
+            queue.put(line.strip())
             break
-    
-    return none
+        else:
+            queue.put("Debug desde check")
 
 def main():
     args = get_arguments()
 
     processes = []
-    threads = int(args.threads) if args.threads else: multiprocessing.cpu_count()
-
+    threads = int(args.threads) if args.threads else multiprocessing.cpu_count()
+    queue = multiprocessing.Queue()
+    
     for block in parse_wordlist(args.wordlist):
-        process = multiprocessing.Process(target=hash_check, block)
+        
+        process = multiprocessing.Process(target=hash_check, args=(block, args.algorithm, args.hash_value,queue))
         process.start()
-        processes.appen(process)
+        processes.append(process)
 
         if len(processes) >= threads:
             for p in processes:
+                p.close()
                 p.join()
             processes = []
+              
+        if not queue.empty():
+            found = queue.get()
+            print(f"Valor: {found}")
+            break
+        else:
+            print("Debug ")
 
     for p in processes:
+        p.terminate()
         p.join()
 
 if __name__ == '__main__':
